@@ -1,0 +1,4 @@
+# interval
+1
+# base coin
+busd
