@@ -11,7 +11,7 @@ import decimal
 def function_count():
     symbol = 'ETHBTC'
     starttime = '1 day ago UTC'  # to start for 1 day ago
-    interval_num = 3
+    interval_num = 1
     interval_let = "m"
     interval = str(interval_num) + interval_let
     # interval = '3m'
@@ -19,7 +19,7 @@ def function_count():
     volume = trader.client.get_ticker(symbol=symbol)['quoteVolume']
 
     ask_price = trader.client.get_orderbook_ticker(symbol=symbol)
-    print(ask_price['askPrice'])
+    # print(ask_price['askPrice'])
 
 
     open_time = [int(entry[0]) for entry in klines]
@@ -39,18 +39,23 @@ def function_count():
     ma20 = ta.MA(close_array, 20)
     st = ta.STDDEV(close_array, timeperiod=20, nbdev=1)
 
-    upper_bb = (ma20[-2] + 2 * st[-2])
-    lower_bb = (ma20[-2] - 2 * st[-2])
+    upper_bb = (ma20[-1] + 2 * st[-1])
+    lower_bb = (ma20[-1] - 2 * st[-1])
 
+    print(upper_bb)
+    print(lower_bb)
+
+    print('psar:')
     print(decimal.Decimal(psar[-1]))
+    print('\nMA20:')
     print(decimal.Decimal(ma20[-1]))
 
     fig = go.Figure(go.Scatter(x=new_time,
-                            y=slowk,
+                            y=psar,
                             line=dict(color='black', width=2)
                             ))
     fig.add_trace(go.Scatter(x=new_time,
-                            y=slowd,
+                            y=ma20,
                             line=dict(color='blue', width=1)
                             ))
     fig.show()

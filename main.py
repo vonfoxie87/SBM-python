@@ -117,8 +117,8 @@ def function_count():
         ma20 = ta.MA(close_array, 20)
         st = ta.STDDEV(close_array, timeperiod=20, nbdev=1)
 
-        upper_bb = (ma20[-2] + 2 * st[-2])
-        lower_bb = (ma20[-2] - 2 * st[-2])
+        upper_bb = (ma20[-1] + 2 * st[-1])
+        lower_bb = (ma20[-1] - 2 * st[-1])
         
         # candle gesloten onder de lower bb?
         if decimal.Decimal(close_array[-1]) < decimal.Decimal(lower_bb):
@@ -183,7 +183,9 @@ def function_count():
             continue
         
         # PSAR check
-        if decimal.Decimal(psar[-1]) < decimal.Decimal(ma20[-1]):
+        if (decimal.Decimal(psar[-1]) < decimal.Decimal(ma20[-1]) or 
+            decimal.Decimal(psar[-2]) < decimal.Decimal(ma20[-2]) or
+            decimal.Decimal(psar[-3]) < decimal.Decimal(ma20[-3])):
             msg = f'🟡 {symbol}: 5. PSAR is correct'
             print(msg)
             updater.bot.send_message(chat_id=user_id, text=msg)
@@ -193,10 +195,10 @@ def function_count():
             continue
 
         # MA's check
-        if ma200[-2] > ma50[-2] and ma50[-2] > ma20[-2]:
-            ma200_ma50_calc = abs((ma200[-2] - ma50[-2]) / ((ma200[-2] + ma50[-2]) / 2) * 100)
+        if ma200[-1] > ma50[-1] and ma50[-1] > ma20[-1]:
+            ma200_ma50_calc = abs((ma200[-1] - ma50[-1]) / ((ma200[-1] + ma50[-1]) / 2) * 100)
             if ma200_ma50_calc > 0.3:  # 1
-                ma50_ma20_calc = abs((ma50[-2] - ma20[-2]) / ((ma50[-2] + ma20[-2]) / 2) * 100)
+                ma50_ma20_calc = abs((ma50[-1] - ma20[-1]) / ((ma50[-1] + ma20[-1]) / 2) * 100)
                 if ma50_ma20_calc > 0.3:  # 0.7
                     print('ma50 en ma20 is meer dan 0.7%')
                     print('Alle MA lijnen staan goed met de juiste percentages.')
