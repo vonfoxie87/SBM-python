@@ -33,9 +33,15 @@ def function_reset(update, context):
 
 
 def function_help(update, context):
-    msg = "/1m\n/3m\n/btc\n/busd"
+    msg = "/1m - 1m interval\n/3m - 3m interval\n/btc - Coinpair BTC\n/busd - Coinpair BUSD\n\n/settings - Instellingen\n/help - Help\n/reset - Reset script"
     context.bot.send_message(chat_id=update.message.chat.id, text=msg)
     
+
+def function_settings_all(update, context):
+    with open('settings.txt', 'r') as file:
+        data = file.readlines()
+    context.bot.send_message(chat_id=update.message.chat.id, text=f'Interval is: {data[1]}\nCoinpair is: {data[3]}')
+
 
 def function_settings_1m(update, context):
     with open('settings.txt', 'r') as file:
@@ -78,6 +84,7 @@ dispatcher.add_handler(CommandHandler("3m", function_settings_3m))
 dispatcher.add_handler(CommandHandler("btc", function_settings_btc))
 dispatcher.add_handler(CommandHandler("busd", function_settings_busd))
 dispatcher.add_handler(CommandHandler('help', function_help))
+dispatcher.add_handler(CommandHandler('settings', function_settings_all))
 dispatcher.add_handler(CommandHandler('reset', function_reset))
 updater.start_polling()
 
@@ -97,6 +104,7 @@ def function_count():
         interval = str(interval_num) + interval_let
         # interval = '3m'
         klines = trader.client.get_historical_klines(symbol, interval, starttime)
+        # klines = trader.client.get_historical_klines("RADBUSD", "1m", "20-12-2022", "21-12-2022 07:18:00 UTC, ")
         volume = trader.client.get_ticker(symbol=symbol)['quoteVolume']
 
         open_time = [int(entry[0]) for entry in klines]
@@ -119,7 +127,7 @@ def function_count():
 
         upper_bb = (ma20[-1] + 2 * st[-1])
         lower_bb = (ma20[-1] - 2 * st[-1])
-        
+
         # candle gesloten onder de lower bb?
         if decimal.Decimal(close_array[-1]) < decimal.Decimal(lower_bb):
             msg = f'🟡 {symbol}: 1. Close is correct'
@@ -132,20 +140,12 @@ def function_count():
 
         # Stoch check
         # k doorkruist d
-        if slowd[-2] < 20 and slowk[-2] < 20:
-            if slowk[-2] < slowd[-2]:
-                if slowk[-1] > slowd[-1]:
-                    msg = f'🟡 {symbol}: 2. Stoch is correct'
-                    print(msg)
-                    # updater.bot.send_message(chat_id=user_id, text=msg)
-                else:
-                    msg = f'🔴 {symbol}: 2. Stoch is fout'
-                    print(msg)
-                    continue
-            else:
-                msg = f'🔴 {symbol}: 2. Stoch is fout'
-                print(msg)
-                continue
+        if slowd[-1] < 20 and slowk[-1] < 20:
+        # if slowk[-1] < slowd[-1]:
+            #if slowk[-1] > slowd[-1]:
+            msg = f'🟡 {symbol}: 2. Stoch is correct'
+            print(msg)
+            # updater.bot.send_message(chat_id=user_id, text=msg)
         else:
             msg = f'🔴 {symbol}: 2. Stoch is fout'
             print(msg)
@@ -170,10 +170,10 @@ def function_count():
                 msg = f'🔴 {symbol}: 3. Volume is fout'
                 print(msg)
                 continue
-
+        
         # BB check
         calc_percentage = ((decimal.Decimal(upper_bb) - decimal.Decimal(lower_bb)) / ((decimal.Decimal(upper_bb) + decimal.Decimal(lower_bb)) /2) * 100)
-        if calc_percentage > 0.5 and calc_percentage <= 5:
+        if calc_percentage > 1.3 and calc_percentage < 5:
             msg = f"🟡 {symbol}: 4. BB is correct: {calc_percentage}"
             print(msg)
             updater.bot.send_message(chat_id=user_id, text=msg)
@@ -200,7 +200,6 @@ def function_count():
             if ma200_ma50_calc > 0.3:  # 1
                 ma50_ma20_calc = abs((ma50[-1] - ma20[-1]) / ((ma50[-1] + ma20[-1]) / 2) * 100)
                 if ma50_ma20_calc > 0.3:  # 0.7
-                    print('ma50 en ma20 is meer dan 0.7%')
                     print('Alle MA lijnen staan goed met de juiste percentages.')
                     msg = f"🟡 {symbol}: 6. MA'S zijn correct"
                     updater.bot.send_message(chat_id=user_id, text=msg)
