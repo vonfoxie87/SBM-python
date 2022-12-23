@@ -115,6 +115,8 @@ def function_count():
         new_time = [datetime.fromtimestamp(time/1000) for time in open_time]
 
         macd, macdsignal, macdhist = ta.MACD(close_array, fastperiod=12, slowperiod=26, signalperiod=9)
+        macd = macd[~np.isnan(macd)]
+        macdsignal = macdsignal[~np.isnan(macdsignal)]
         slowk, slowd = ta.STOCH(high_array, low_array, close_array, fastk_period=14, slowk_period=1, slowk_matype=0, slowd_period=3, slowd_matype=0)
         psar = ta.SAR(high_array, low_array, acceleration=0.02, maximum=0.2)
         ma200 = ta.MA(close_array, 200)
@@ -146,7 +148,7 @@ def function_count():
         # volume check
         if symbol[-3:] == 'BTC':
             if decimal.Decimal(volume) > 100:
-                msg = f'🟡 {symbol}:3.  Volume is correct'
+                msg = f'🟡 {symbol}: 3. Volume is correct'
                 print(msg)
             else:
                 msg = f'🔴 {symbol}: 3. Volume is fout'

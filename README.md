@@ -1,5 +1,5 @@
 "# SBM-python" 
-<br>
+<br><br>
 Installeren:
 - Download TA-lib
 - maak een virtualenv aan en installeer requirements.txt
