@@ -93,16 +93,13 @@ def function_count():
     symbol_list = function_symbol()
     for i in range(len(symbol_list)):
         if symbol_list[i] == 'restart':
-            # os.system('CLS')                                  # clears the CMD logs for windows! linux gives error
             os.execv(sys.executable, ['python'] + sys.argv)     # restarts application
-        # print(symbol_list[i])
 
         symbol = symbol_list[i]
         starttime = '1 day ago UTC'  # to start for 1 day ago
         interval_num = lines_set[1]
         interval_let = "m"
         interval = str(interval_num) + interval_let
-        # interval = '3m'
         klines = trader.client.get_historical_klines(symbol, interval, starttime)
         # klines = trader.client.get_historical_klines("RADBUSD", "1m", "20-12-2022", "21-12-2022 07:18:00 UTC, ")
         volume = trader.client.get_ticker(symbol=symbol)['quoteVolume']
@@ -132,20 +129,15 @@ def function_count():
         if decimal.Decimal(close_array[-1]) < decimal.Decimal(lower_bb):
             msg = f'🟡 {symbol}: 1. Close is correct'
             print(msg)
-            # updater.bot.send_message(chat_id=user_id, text=msg)
         else:
             msg = f'🔴 {symbol}: 1. Close is fout'
             # print(msg)
             continue
 
         # Stoch check
-        # k doorkruist d
         if slowd[-1] < 20 and slowk[-1] < 20:
-        # if slowk[-1] < slowd[-1]:
-            #if slowk[-1] > slowd[-1]:
             msg = f'🟡 {symbol}: 2. Stoch is correct'
             print(msg)
-            # updater.bot.send_message(chat_id=user_id, text=msg)
         else:
             msg = f'🔴 {symbol}: 2. Stoch is fout'
             print(msg)
@@ -156,7 +148,6 @@ def function_count():
             if decimal.Decimal(volume) > 100:
                 msg = f'🟡 {symbol}:3.  Volume is correct'
                 print(msg)
-                # updater.bot.send_message(chat_id=user_id, text=msg)
             else:
                 msg = f'🔴 {symbol}: 3. Volume is fout'
                 print(msg)
@@ -165,7 +156,6 @@ def function_count():
             if decimal.Decimal(volume) > 5000000:
                 msg = f'🟡 {symbol}: 3. Volume is correct'
                 print(msg)
-                # updater.bot.send_message(chat_id=user_id, text=msg)
             else:
                 msg = f'🔴 {symbol}: 3. Volume is fout'
                 print(msg)
