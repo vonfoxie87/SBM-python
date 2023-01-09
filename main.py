@@ -1,122 +1,145 @@
 from binance.client import Client
 import talib as ta
 import numpy as np
+import pandas as pd
 from datetime import datetime
 import decimal
 import time
 import os
 import sys
-from telegram import *
-from telegram.ext import *
-from telegram.ext import CommandHandler, CallbackContext, Updater
+import csv
+import requests
+import urllib.request
 
 
 print('\n Starting application...')
 
 filename = 'credentials.txt'
 filename_settings = 'settings.txt'
-
 lines_set = [line_set.rstrip('\n') for line_set in open(filename_settings)]
 
+lines_cred = [line_cred.rstrip('\n') for line_cred in open(filename)]
+user_id = lines_cred[4]
+telegram_api = lines_cred[5]
 
-# TELEGRAM
-lines = [line.rstrip('\n') for line in open(filename)]
-user_id = lines[4]
-updater = Updater(token=lines[5], use_context=True)
-dispatcher = updater.dispatcher
+def function_sendmessage(msg):
+    apiURL = f'https://api.telegram.org/bot{telegram_api}/sendMessage'
+    try:
+        response = requests.post(apiURL, json={'chat_id': user_id, 'text': msg})
+        print(response.text)
+        return
+    except Exception as e:
+        print(e)
+        return
 
 
-def function_reset(update, context):
-    reset_app = "Applicatie word opnieuw opgestart"
-    context.bot.send_message(chat_id=update.message.chat.id, text=reset_app)
+def function_sendfile():
+    fPath = "/home/pi/binancebot/trades.csv"
+    apiURL = f'https://api.telegram.org/bot{telegram_api}/sendDocument'
+    try:
+        files = {'document': open(fPath, 'rb')}
+        params = {'chat_id': user_id}
+        response = requests.post(apiURL, params=params, files=files)
+        print(response.text)
+        return
+    except Exception as e:
+        print(e)
+        return
+
+
+def function_sendchart():
+    fPath = "/home/pi/binancebot/chart.jpg"
+    apiURL = f'https://api.telegram.org/bot{telegram_api}/sendPhoto'
+    try:
+        files = {'photo': open(fPath, 'rb')}
+        params = {'chat_id': user_id}
+        response = requests.post(apiURL, params=params, files=files)
+        print(response.text)
+        return
+    except Exception as e:
+        print(e)
+        return
+
+
+def function_reset():
+    msg = "Applicatie word opnieuw opgestart"
+    function_sendmessage(msg)
     os.execv(sys.executable, ['python'] + sys.argv)
 
 
-def function_help(update, context):
-    msg = "/1m - 1m interval\n/3m - 3m interval\n/btc - Coinpair BTC\n/busd - Coinpair BUSD\n\n/settings - Instellingen\n/help - Help\n/reset - Reset script"
-    context.bot.send_message(chat_id=update.message.chat.id, text=msg)
-    
+def function_help():
+    msg = "/1m - 1m interval\n/3m - 3m interval\n/btc - Coinpair BTC\n/busd - Coinpair BUSD\n\n/settings - Instellingen\n/trades Overzicht\n/help - Help\n/reset - Reset script"
+    function_sendmessage(msg)
 
-def function_settings_all(update, context):
+
+def function_settings_all():
     with open('settings.txt', 'r') as file:
         data = file.readlines()
-    context.bot.send_message(chat_id=update.message.chat.id, text=f'Interval is: {data[1]}\nCoinpair is: {data[3]}')
+    msg = f'Interval is: {data[1]}\nCoinpair is: {data[3]}'
+    function_sendmessage(msg)
 
 
-def function_settings_1m(update, context):
+def function_settings_1m():
     with open('settings.txt', 'r') as file:
         data = file.readlines()
     data[1] = '1\n'
     with open('settings.txt', 'w') as file:
         file.writelines( data )
-    context.bot.send_message(chat_id=update.message.chat.id, text='Interval is nu: 1m')
-        
+    msg = 'Interval is nu: 1m'
+    function_sendmessage(msg)
 
-def function_settings_3m(update, context):
+
+def function_settings_3m():
     with open('settings.txt', 'r') as file:
         data = file.readlines()
     data[1] = '3\n'
     with open('settings.txt', 'w') as file:
         file.writelines( data )
-    context.bot.send_message(chat_id=update.message.chat.id, text='Interval is nu: 3m')
-        
+    msg = 'Interval is nu: 3m'
+    function_sendmessage(msg)
 
-def function_settings_btc(update, context):
+
+def function_settings_btc():
     with open('settings.txt', 'r') as file:
         data = file.readlines()
     data[3] = 'btc\n'
     with open('settings.txt', 'w') as file:
         file.writelines( data )
-    context.bot.send_message(chat_id=update.message.chat.id, text='Coinpair is nu: BTC')
-        
+    msg = 'Coinpair is nu: BTC'
+    function_sendmessage(msg)
 
-def function_settings_busd(update, context):
+
+def function_settings_busd():
     with open('settings.txt', 'r') as file:
         data = file.readlines()
     data[3] = 'busd\n'
     with open('settings.txt', 'w') as file:
         file.writelines( data )
-    context.bot.send_message(chat_id=update.message.chat.id, text='Coinpair is nu: BUSD')
-        
-
-dispatcher.add_handler(CommandHandler("1m", function_settings_1m))
-dispatcher.add_handler(CommandHandler("3m", function_settings_3m))
-dispatcher.add_handler(CommandHandler("btc", function_settings_btc))
-dispatcher.add_handler(CommandHandler("busd", function_settings_busd))
-dispatcher.add_handler(CommandHandler('help', function_help))
-dispatcher.add_handler(CommandHandler('settings', function_settings_all))
-dispatcher.add_handler(CommandHandler('reset', function_reset))
-updater.start_polling()
+    msg = 'Coinpair is nu: BUSD'
+    function_sendmessage(msg)
 
 
 def function_count():
     symbol_list = function_symbol()
     for i in range(len(symbol_list)):
-        if symbol_list[i] == 'restart':
+        if symbol_list[i] == 'reset':
+            time.sleep(10)
             os.execv(sys.executable, ['python'] + sys.argv)     # restarts application
-
         symbol = symbol_list[i]
         starttime = '1 day ago UTC'  # to start for 1 day ago
         interval_num = lines_set[1]
         interval_let = "m"
         interval = str(interval_num) + interval_let
         klines = trader.client.get_historical_klines(symbol, interval, starttime)
-        # klines = trader.client.get_historical_klines("RADBUSD", "1m", "20-12-2022", "21-12-2022 07:18:00 UTC, ")
-        volume = trader.client.get_ticker(symbol=symbol)['quoteVolume']
 
-        open_time = [int(entry[0]) for entry in klines]
-        open = [float(entry[1]) for entry in klines]
         high = [float(entry[2]) for entry in klines]
         low = [float(entry[3]) for entry in klines]
         close = [float(entry[4]) for entry in klines]
         high_array = np.asarray(high)
         low_array = np.asarray(low)
         close_array = np.asarray(close)
-        new_time = [datetime.fromtimestamp(time/1000) for time in open_time]
 
         macd, macdsignal, macdhist = ta.MACD(close_array, fastperiod=12, slowperiod=26, signalperiod=9)
-        macd = macd[~np.isnan(macd)]
-        macdsignal = macdsignal[~np.isnan(macdsignal)]
         slowk, slowd = ta.STOCH(high_array, low_array, close_array, fastk_period=14, slowk_period=1, slowk_matype=0, slowd_period=3, slowd_matype=0)
         psar = ta.SAR(high_array, low_array, acceleration=0.02, maximum=0.2)
         ma200 = ta.MA(close_array, 200)
@@ -127,62 +150,61 @@ def function_count():
         upper_bb = (ma20[-1] + 2 * st[-1])
         lower_bb = (ma20[-1] - 2 * st[-1])
 
+        write_dict = {'BUY_SELL': '',
+                      'Datetime': 'date_time',
+                      'Symbol': symbol,
+                      'Close': 'Close',
+                      'Stoch': 'slowk[-1]',
+                      'BBpercentages': 'calc_percentage',
+                      'PSAR': 'psar[-1]',
+                      'MA200': 'MA200',
+                      'MA50': 'MA50',
+                      'MA20': 'MA20',
+                      'macdhist': 'macdhist',
+                      'AskPrice': 'askprice',
+                      'Sell': '0',
+                      'OrderID': '0'}
+
         # candle gesloten onder de lower bb?
         if decimal.Decimal(close_array[-1]) < decimal.Decimal(lower_bb):
-            msg = f'🟡 {symbol}: 1. Close is correct'
+            msg = f'🟢🔸🔸🔸🔸🔸 {symbol}: 1. Close is correct'
+            write_dict['Close'] = "%.8f" % decimal.Decimal(close_array[-1])
             print(msg)
         else:
-            msg = f'🔴 {symbol}: 1. Close is fout'
+            msg = f'🔸🔸🔸🔸🔸🔸 {symbol}: 1. Close is fout'
             # print(msg)
             continue
 
         # Stoch check
-        if slowd[-1] < 20 and slowk[-1] < 20:
-            msg = f'🟡 {symbol}: 2. Stoch is correct'
+        if (slowk[-1] < 20 or
+            slowk[-2] < 20):
+            msg = f'🟢🟢🔸🔸🔸🔸 {symbol}: 2. Stoch is correct'
+            write_dict['Stoch'] = "%.8f" % decimal.Decimal(slowk[-1])
             print(msg)
         else:
-            msg = f'🔴 {symbol}: 2. Stoch is fout'
+            msg = f'🟢🔴🔴🔴🔴🔴 {symbol}: 2. Stoch is fout'
             print(msg)
             continue
-        
-        # volume check
-        if symbol[-3:] == 'BTC':
-            if decimal.Decimal(volume) > 100:
-                msg = f'🟡 {symbol}: 3. Volume is correct'
-                print(msg)
-            else:
-                msg = f'🔴 {symbol}: 3. Volume is fout'
-                print(msg)
-                continue
-        if symbol[-3:] == 'USD':
-            if decimal.Decimal(volume) > 5000000:
-                msg = f'🟡 {symbol}: 3. Volume is correct'
-                print(msg)
-            else:
-                msg = f'🔴 {symbol}: 3. Volume is fout'
-                print(msg)
-                continue
-        
+
         # BB check
         calc_percentage = ((decimal.Decimal(upper_bb) - decimal.Decimal(lower_bb)) / ((decimal.Decimal(upper_bb) + decimal.Decimal(lower_bb)) /2) * 100)
-        if calc_percentage > 1.3 and calc_percentage < 5:
-            msg = f"🟡 {symbol}: 4. BB is correct: {calc_percentage}"
+        if calc_percentage > 1 and calc_percentage < 5:
+            calc_percentage = "%.2f" % decimal.Decimal(calc_percentage)
+            msg = f"🟢🟢🟢🔸🔸🔸 {symbol}: 3. BB is correct: {calc_percentage}%"
+            write_dict['BBpercentages'] = calc_percentage
             print(msg)
-            updater.bot.send_message(chat_id=user_id, text=msg)
         else:
-            msg = f'🔴 {symbol}: 4. BB is fout'
+            msg = f'🟢🟢🔴🔴🔴🔴 {symbol}: 3. BB is fout'
             print(msg)
             continue
-        
+
         # PSAR check
-        if (decimal.Decimal(psar[-1]) < decimal.Decimal(ma20[-1]) or 
-            decimal.Decimal(psar[-2]) < decimal.Decimal(ma20[-2]) or
-            decimal.Decimal(psar[-3]) < decimal.Decimal(ma20[-3])):
-            msg = f'🟡 {symbol}: 5. PSAR is correct'
+        if (decimal.Decimal(psar[-1]) < decimal.Decimal(ma20[-1])):
+            msg = f'🟢🟢🟢🟢🔸🔸 {symbol}: 4. PSAR is correct'
+            write_dict['PSAR'] = "%.8f" % decimal.Decimal(psar[-1])
             print(msg)
-            updater.bot.send_message(chat_id=user_id, text=msg)
         else:
-            msg = f'🔴 {symbol}: 5. PSAR is fout'
+            msg = f'🟢🟢🟢🔴🔴🔴 {symbol}: 4. PSAR is fout'
             print(msg)
             continue
 
@@ -192,69 +214,271 @@ def function_count():
             if ma200_ma50_calc > 0.3:  # 1
                 ma50_ma20_calc = abs((ma50[-1] - ma20[-1]) / ((ma50[-1] + ma20[-1]) / 2) * 100)
                 if ma50_ma20_calc > 0.3:  # 0.7
-                    print('Alle MA lijnen staan goed met de juiste percentages.')
-                    msg = f"🟡 {symbol}: 6. MA'S zijn correct"
-                    updater.bot.send_message(chat_id=user_id, text=msg)
+                    msg = f"🟢🟢🟢🟢🟢🔸 {symbol}: 5. MA'S zijn correct"
+                    write_dict['MA200'] = "%.8f" % decimal.Decimal(ma200[-1])
+                    write_dict['MA50'] = "%.8f" % decimal.Decimal(ma50[-1])
+                    write_dict['MA20'] = "%.8f" % decimal.Decimal(ma20[-1])
+                    print(msg)
                 else:
-                    msg = f'🔴 {symbol}: 6. MA is fout'
+                    msg = f'🟢🟢🟢🟢🔴🔴 {symbol}: 5. MA is fout'
                     print(msg)
                     continue
             else:
-                msg = f'🔴 {symbol}: 6. MA is fout'
+                msg = f'🟢🟢🟢🟢🔴🔴 {symbol}: 5. MA is fout'
                 print(msg)
                 continue
         else:
-            msg = f'🔴 {symbol}: 6. MA is fout'
+            msg = f'🟢🟢🟢🟢🔴🔴 {symbol}: 5. MA is fout'
             print(msg)
             continue
-        
+
+        # MACD check
         # loop functie, 60 seconden x 3 candles x interval
-        end_macd_loop = time.time() + 60 * float(interval_num) * 3
-        while time.time() < end_macd_loop:
-            # MACD check
-            macd_now = (decimal.Decimal(macd[-1]) - decimal.Decimal(macdsignal[-1]))
-            macd_old = (decimal.Decimal(macd[-2]) - decimal.Decimal(macdsignal[-2]))
-            if decimal.Decimal(macd[-1]) < decimal.Decimal(macdsignal[-1]):
-                if macd_now > macd_old:
+        end_macd_loop = (60 * float(interval_num) * 3)
+        macd_hist_list = []
+        macd_hist_list.append(decimal.Decimal(macdhist[-1]))
+        print(f'{macd_hist_list[0]} - Old one')
+        t1 = datetime.now()
+        while (datetime.now()-t1).seconds <= end_macd_loop:
+            klines = trader.client.get_historical_klines(symbol, interval, starttime)
+            close = [float(entry[4]) for entry in klines]
+            close_array = np.asarray(close)
+            macd, macdsignal, macdhist = ta.MACD(close_array, fastperiod=12, slowperiod=26, signalperiod=9)
+            macdhist_new = (macd[-1] - macdsignal[-1])
+            print(macdhist_new)
+            time.sleep(10)
+            if decimal.Decimal(macdhist_new) > macd_hist_list[0]:
+                if decimal.Decimal(macdhist_new) < 0:
+                    now_datetime = datetime.now()
+                    date_time = now_datetime.strftime("%d/%m/%Y, %H:%M:%S")
                     # get ask price
                     ask_price = trader.client.get_orderbook_ticker(symbol=symbol)
-                    print(ask_price['askPrice'])
-                    msg = f"🟢 Alle voorwaarden behaald!\nAsk price: {ask_price['askPrice']}"
+                    askprice = ask_price['askPrice']
+                    print(askprice)
+                    msg = f"🟢🟢🟢🟢🟢🟢 {symbol}: Alle voorwaarden behaald!\nAsk price: {askprice}"
                     print(msg)
-                    updater.bot.send_message(chat_id=user_id, text=msg)
-                    os.execv(sys.executable, ['python'] + sys.argv)
-                    time.sleep(3)
-                    break
-        msg = f'🔴 {symbol}: 7. MACD is fout'
+                    write_dict['Datetime'] = date_time
+                    write_dict['macdhist'] = "%.8f" % decimal.Decimal(macdhist_new)
+                    write_dict['AskPrice'] = "%.8f" % decimal.Decimal(askprice)
+                    # function_sendmessage(msg)
+                    function_buy(symbol, write_dict)
+        msg = f'🟢🟢🟢🟢🟢🔴 {symbol}: 6. MACD is fout'
         print(msg)
         os.execv(sys.executable, ['python'] + sys.argv)
-        time.sleep(3)
-        break
 
 
 def function_symbol():
-    if lines_set[3] == 'BTC' or lines_set[3] == 'btc' or lines_set[3] == 'Btc':
-        symbol_list = ['ALGOBTC', 'ATOMBTC', 'AVAXBTC', 'AXSBTC', 'BNBBTC', 'DOTBTC', 'EGLDBTC', 'ETHBTC',
-                       'DOGEBTC', 'FILBTC', 'FTMBTC', 'LINKBTC', 'LTCBTC', 'MANABTC', 'MATICBTC', 'NEOBTC',
-                       'RUNEBTC', 'SANDBTC', 'SOLBTC', 'THETABTC', 'XLMBTC', 'XMRBTC', 'XRPBTC', 'restart']
-
-    if lines_set[3] == 'BUSD' or lines_set[3] == 'busd' or lines_set[3] == 'Busd':
-        symbol_list = ['SHIBBUSD', 'LUNCBUSD', 'BTTCBUSD', 'XECBUSD', 'LEVERBUSD', 'WINBUSD', 'DOGEBUSD', 'EPXBUSD',
-                       'JASMYBUSD', 'USTCBUSD', 'MBLBUSD', 'IQBUSD', 'REEFBUSD', 'XRPBUSD', 'RSRBUSD', 'GALABUSD',
-                       'SPELLBUSD', 'XVGBUSD', 'POWRBUSD', 'SLPBUSD', 'ADABUSD', 'OOKIBUSD', 'DENTBUSD', 'VIBBUSD',
-                       'TRXBUSD', 'AMBBUSD', 'HOTBUSD', 'VETBUSD', 'SCBUSD', 'LOOMBUSD', 'STMXBUSD', 'GTOBUSD', 'CHZBUSD',
-                       'ROSEBUSD', 'SRMBUSD', 'ACHBUSD', 'TLMBUSD', 'QIBUSD', 'DGBBUSD', 'WAXPBUSD', 'STPTBUSD', 'SUNBUSD',
-                       'LINABUSD', 'VIDTBUSD', 'POLYXBUSD', 'MATICBUSD', 'ANCBUSD', 'CKBBUSD', 'PEOPLEBUSD', 'COSBUSD',
-                       'AERGOBUSD', 'CVCBUSD', 'ONEBUSD', 'AGIXBUSD', 'FORBUSD', 'FTMBUSD', 'ALGOBUSD', 'TBUSD', 'ZILBUSD',
-                       'HBARBUSD', 'TROYBUSD', 'TKOBUSD', 'GMTBUSD', 'KEYBUSD', 'MTLBUSD', 'HIVEBUSD', 'FETBUSD', 'HFTBUSD',
-                       'AMPBUSD', 'OCEANBUSD', 'UFTBUSD', 'EURBUSD', 'QKCBUSD', 'TVKBUSD', 'IOSTBUSD', 'MAGICBUSD', 'AUDBUSD',
-                       'XLMBUSD', 'RVNBUSD', 'VITEBUSD', 'PONDBUSD', 'HOOKBUSD', 'GLMBUSD', 'DODOBUSD', 'GRTBUSD', 'LSKBUSD',
-                       'AKROBUSD', 'SNTBUSD', 'PHBBUSD', 'MDXBUSD', 'SNMBUSD', 'CELRBUSD', 'MOBBUSD', 'ARKBUSD', 'SANDBUSD',
-                       'RAYBUSD', 'TFUELBUSD', 'TWTBUSD', 'CTXCBUSD', 'NEARBUSD', 'ATABUSD', 'OPBUSD', 'MIRBUSD', 'MDTBUSD',
-                       'PROSBUSD', 'RENBUSD', 'APTBUSD', 'DYDXBUSD', 'DOCKBUSD', 'STORJBUSD', 'RADBUSD', 'SKLBUSD', 'FTTBUSD',
-                       'ELFBUSD', 'CHRBUSD', 'PHABUSD', 'RUNEBUSD', 'MASKBUSD', 'FIDABUSD', 'MANABUSD', 'APEBUSD', 'SYSBUSD',
-                       'TRIBEBUSD', 'ANKRBUSD', 'restart']
+    now_datetime = datetime.now()
+    date_time = now_datetime.strftime("%d/%m/%Y, %H:%M:%S")
+    with open('coins_btc.txt', 'r') as f:
+        data = f.readlines()
+    timer = time.time() + 60 * 60
+    if not data:
+        with open('coins_btc.txt', 'w') as f:
+            f.write(f"{time.time()}\n{date_time}\n")
+        time.sleep(3)
+    with open('coins_btc.txt', 'r') as f:
+         data = f.readlines()
+    if (decimal.Decimal(data[0]) < time.time()):
+        with open('coins_btc.txt', 'w') as f:
+            f.write(f"{timer}\n{date_time}\n")
+        with open('coins_busd.txt', 'w') as f:
+            f.write(f"{timer}\n{date_time}\n")
+        get_all = trader.client.get_ticker()
+        for i in get_all:
+            if decimal.Decimal(i['quoteVolume']) > 100 and i['symbol'][-3:] == 'BTC':
+                with open('coins_btc.txt', 'a') as f:
+                    f.write(f"{i['symbol']},")
+            if decimal.Decimal(i['quoteVolume']) > 5000000 and i['symbol'][-4:] == 'BUSD':
+                with open('coins_busd.txt', 'a') as f:
+                    f.write(f"{i['symbol']},")
+        with open('coins_btc.txt', 'a') as f:
+            f.write("reset")
+        with open('coins_busd.txt', 'a') as f:
+            f.write("reset")
+        print('refreshed symbols')
+    with open('settings.txt', 'r') as file:
+        data = file.readlines()
+    if data[3].strip() == "busd":
+        with open('coins_busd.txt', 'r') as f:
+            data = f.readlines()
+        symbol_list = data[2].split(',')
+    with open('settings.txt', 'r') as file:
+        data = file.readlines()
+    if data[3].strip() == "btc":
+        with open('coins_btc.txt', 'r') as f:
+            data = f.readlines()
+        symbol_list = data[2].split(',')
     return symbol_list
+
+
+def function_buy(symbol, write_dict):
+    balance_btc = trader.client.get_asset_balance(asset='BTC')['free']
+    balance_busd = trader.client.get_asset_balance(asset='BUSD')['free']
+    ask_price = trader.client.get_orderbook_ticker(symbol=symbol)
+    stepsize_client = trader.client.get_symbol_info(symbol)
+    stepsize = float(stepsize_client['filters'][1]['stepSize'])
+    askprice = float(ask_price['askPrice'])
+    with open('settings.txt', 'r') as file:
+        data = file.readlines()
+    if data[3].strip() == "btc":
+        quant = float(balance_btc)
+    if data[3].strip() == "busd":
+        quant = float(balance_busd)
+
+    buy_calc_amount = (quant / askprice) * 0.98
+    sell_calcprice = 0.0025 * askprice + askprice
+
+    if stepsize == 1.00000000:
+        buy_amount = "%.0f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.10000000:
+        buy_amount = "%.1f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.01000000:
+        buy_amount = "%.2f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.00100000:
+        buy_amount = "%.3f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.00010000:
+        buy_amount = "%.4f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.00001000:
+        buy_amount = "%.5f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.00000100:
+        buy_amount = "%.6f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.00000010:
+        buy_amount = "%.7f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    elif stepsize == 0.00000001:
+        buy_amount = "%.8f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    else:
+        buy_amount = "%.0f" % buy_calc_amount
+        buy_amount = float(buy_amount)
+    order = trader.client.order_market_buy(symbol=symbol, quantity=buy_amount)
+    print(order)
+    orderid = order['orderId']
+    chart_key = lines_cred[7]
+    chart_url = f"https://api.chart-img.com/v1/tradingview/advanced-chart?interval=1m&symbol=BINANCE:{symbol}&studies=SAR&studies=BB&studies=MACD&studies=MA:50,close&studies=MA:200,close&key={chart_key}"
+    urllib.request.urlretrieve(chart_url, "chart.jpg")
+    msg = f"{symbol} buy for: {askprice}\norder ID: {orderid}"
+    write_dict['BUY_SELL'] = 'BUY'
+    write_dict['OrderID'] = decimal.Decimal(orderid)
+    print(write_dict)
+    with open('trades.csv', 'a', encoding='UTF8', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(write_dict.values())
+    function_sendmessage(msg)
+    function_sendchart()
+    # function_sendfile()
+    time.sleep(10)
+    function_sell(symbol=symbol, sell_calcprice=sell_calcprice, orderid=orderid)
+
+
+def function_sell(symbol, sell_calcprice, orderid):
+    get_order_status = trader.client.get_order(symbol=symbol, orderId=orderid)
+    order_status = get_order_status['status']
+    while order_status == "NEW":
+        time.sleep(10)
+
+    ticksize_client = trader.client.get_symbol_info(symbol)
+    ticksize = float(ticksize_client['filters'][0]['tickSize'])
+    if ticksize == 1.00000000:
+        sell_price = "%.0f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.10000000:
+        sell_price = "%.1f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.01000000:
+        sell_price = "%.2f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.00100000:
+        sell_price = "%.3f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.00010000:
+        sell_price = "%.4f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.00001000:
+        sell_price = "%.5f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.00000100:
+        sell_price = "%.6f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.00000010:
+        sell_price = "%.7f" % sell_calcprice
+        sell_price = float(sell_price)
+    elif ticksize == 0.00000001:
+        sell_price = "%.8f" % sell_calcprice
+        sell_price = float(sell_price)
+    else:
+        sell_price = "%.0f" % sell_calcprice
+        sell_price = float(sell_price)
+
+    now_datetime = datetime.now()
+    date_time = now_datetime.strftime("%d/%m/%Y, %H:%M:%S")
+    coin1 = symbol.replace('BUSD', '')
+    coin2 = coin1.replace('BTC', '')
+    balance = trader.client.get_asset_balance(asset=coin2)
+    total_asset = float(balance['free'])
+    order = trader.client.order_limit_sell(symbol=symbol, quantity=total_asset, price=str(sell_price))
+    print(order)
+    orderid = order['orderId']
+    write_dict = {'BUY_SELL': 'SELL',
+                  'Datetime': date_time,
+                  'Symbol': symbol,
+                  'Close': '0',
+                  'Stoch': '0',
+                  'BBpercentages': '0',
+                  'PSAR': '0',
+                  'MA200': '0',
+                  'MA50': '0',
+                  'MA20': '0',
+                  'macdhist': '0',
+                  'AskPrice': '0',
+                  'Sell': float(sell_price),
+                  'OrderID': decimal.Decimal(orderid)}
+    with open('trades.csv', 'a', encoding='UTF8', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(write_dict.values())
+    while True:
+        get_order_status = trader.client.get_order(symbol=symbol, orderId=orderid)
+        order_status = get_order_status['status']
+        if order_status == "NEW":
+            time.sleep(15)
+        else:
+            break
+    msg = f'{symbol} has been sold.'
+    function_sendmessage(msg)
+    function_sendfile()
+    os.execv(sys.executable, ['python'] + sys.argv)
+
+
+def function_checkbtc():
+    btc_price = trader.client.get_ticker(symbol="BTCBUSD")
+    currentprice = float(btc_price['lastPrice'])
+    price_high = ((currentprice / 100) * 1) + currentprice
+    price_low = currentprice - ((currentprice / 100) * 1)
+    now_datetime = datetime.now()
+    date_time = now_datetime.strftime("%d/%m/%Y, %H:%M:%S")
+    timer = time.time() + 60 * 15
+    with open('btc_changes.txt', 'r') as f:
+        data = f.readlines()
+    if not data:
+        with open('btc_changes.txt', 'w') as f:
+            f.write(f"{timer}\n{date_time}\n{currentprice}")
+    with open('btc_changes.txt', 'r') as f:
+        data = f.readlines()
+    if (decimal.Decimal(data[0]) < time.time()):
+        with open('btc_changes.txt', 'w') as f:
+            f.write(f"{timer}\n{date_time}\n{currentprice}")
+    if float(data[2]) < price_low  or float(data[2]) > price_high:
+        print('BTC is sterk veranderd in 15 minuten, tijd om te slapen.')
+        time.sleep(1200)
+    function_count()
 
 
 class Trader:
@@ -271,6 +495,7 @@ class Trader:
         prices = self.client.get_widraw_history()
         return prices
 
+
 trader = Trader(filename)
 
-function_count()
+function_checkbtc()

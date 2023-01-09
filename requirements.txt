@@ -17,8 +17,12 @@ idna==3.4
 kiwisolver==1.4.4
 matplotlib==3.6.2
 multidict==6.0.3
+newnewtulipy==0.4.6.5
 numpy==1.24.0
 packaging==22.0
+pandas==1.5.2
+pandas-ta==0.3.14b0
+pep517==0.13.0
 Pillow==9.3.0
 plotly==5.11.0
 pycparser==2.21
@@ -35,6 +39,7 @@ six==1.16.0
 stock-indicators==1.0.0
 TA-Lib @ file:///C:/Users/vosni/projects/tradebot_v2/TA_Lib-0.4.24-cp310-cp310-win_amd64.whl
 tenacity==8.1.0
+tomli==2.0.1
 tornado==6.1
 typing_extensions==4.4.0
 tzdata==2022.7

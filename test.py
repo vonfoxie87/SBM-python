@@ -1,47 +1,15 @@
 from binance.client import Client
-import talib as ta
-import numpy as np
-import matplotlib.pyplot as plt
-from datetime import datetime
-import plotly.io as pio
-import plotly.graph_objects as go
+import decimal
+import time
 import decimal
 
 
 def function_count():
-    symbol = 'ETHBTC'
-    starttime = '1 day ago UTC'  # to start for 1 day ago
-    interval_num = 1
-    interval_let = "m"
-    interval = str(interval_num) + interval_let
-    # interval = '3m'
-    klines = trader.client.get_historical_klines(symbol, interval, starttime)
-    volume = trader.client.get_ticker(symbol=symbol)['quoteVolume']
-
-    ask_price = trader.client.get_orderbook_ticker(symbol=symbol)
-    # print(ask_price['askPrice'])
-
-
-    open_time = [int(entry[0]) for entry in klines]
-    open = [float(entry[1]) for entry in klines]
-    high = [float(entry[2]) for entry in klines]
-    low = [float(entry[3]) for entry in klines]
-    close = [float(entry[4]) for entry in klines]
-    high_array = np.asarray(high)
-    low_array = np.asarray(low)
-    close_array = np.asarray(close)
-    new_time = [datetime.fromtimestamp(time/1000) for time in open_time]
-
-    slowk, slowd = ta.STOCH(high_array, low_array, close_array, fastk_period=14, slowk_period=1, slowk_matype=0, slowd_period=3, slowd_matype=0)
-    psar = ta.SAR(high_array, low_array, acceleration=0.02, maximum=0.2)
-    ma200 = ta.MA(close_array, 200)
-    ma50 = ta.MA(close_array, 50)
-    ma20 = ta.MA(close_array, 20)
-    st = ta.STDDEV(close_array, timeperiod=20, nbdev=1)
-
-    upper_bb = (ma20[-1] + 2 * st[-1])
-    lower_bb = (ma20[-1] - 2 * st[-1])
-
+    symbol = 'HOOKBUSD'
+    stepsize_client = trader.client.get_symbol_info(symbol)
+    stepsize = float(stepsize_client['filters'][0]['tickSize'])
+    print(stepsize)
+'''
     print(upper_bb)
     print(lower_bb)
 
@@ -59,6 +27,49 @@ def function_count():
                             line=dict(color='blue', width=1)
                             ))
     fig.show()
+'''
+
+def volume():
+    symbols = []
+    symbols_correct = []
+    all_coins = trader.client.get_all_tickers()
+    for i in range(len(all_coins)):
+        if all_coins[i]['symbol'][-4:] == "BUSD":
+            symbols.append(all_coins[i]['symbol'])
+    for i in symbols:
+        volume = trader.client.get_ticker(symbol=i)['quoteVolume']
+        if i[-3:] == 'BTC':
+            if decimal.Decimal(volume) > 100:
+                symbols_correct.append(i)
+        if i[-4:] == 'BUSD':
+            if decimal.Decimal(volume) > 5000000:
+                symbols_correct.append(i)
+
+
+def vol_method_two():
+    with open('coins_btc.txt', 'r') as f:
+         data = f.readlines()
+    timer = time.time() + 60 * 60
+    if not data:
+        with open('coins_btc.txt', 'w') as f:
+            f.write(f"{time.time()}\n")
+        time.sleep(3)
+    with open('coins_btc.txt', 'r') as f:
+         data = f.readlines()
+    if (decimal.Decimal(data[0]) < time.time()):
+        print('start')
+        with open('coins_btc.txt', 'w') as f:
+            f.write(f"{timer}\n")
+        with open('coins_busd.txt', 'w') as f:
+            f.write(f"{time.time()}\n")
+        get_all = trader.client.get_ticker()
+        for i in get_all:
+            if decimal.Decimal(i['quoteVolume']) > 100 and i['symbol'][-3:] == 'BTC':
+                with open('coins_btc.txt', 'a') as f:
+                    f.write(f"{i['symbol']},")
+            if decimal.Decimal(i['quoteVolume']) > 5000000 and i['symbol'][-4:] == 'BUSD':
+                with open('coins_busd.txt', 'a') as f:
+                    f.write(f"{i['symbol']},")
 
 
 class Trader:
@@ -66,10 +77,7 @@ class Trader:
         self.connect(file)
 
     def connect(self, file):
-        lines = [line.rstrip('\n') for line in open(file)]
-        key = lines[0]
-        secret = lines[1]
-        self.client = Client(key, secret)
+        self.client = Client('5CHxl9jlu6JeaT5PEriemkQk74UnAlNP4iLtHcZmp5HbAbzaFBh8skUIN0vx2IQU', '5KTj3K13YNfvnf3ycEZspDIz2ft1ULTBNCbQceJGAVUfr5TEjUnhgsHYLsK5JnXm')
 
     def getBalances(self):
         prices = self.client.get_widraw_history()
