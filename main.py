@@ -278,7 +278,7 @@ def function_symbol():
         data = f.readlines()
     if not data:
         with open('coins.txt', 'w') as f:
-            f.write(f"{time.time()}\n{date_time}\nempty")
+            f.write(f"{time.time()}\n{date_time}\n empty\n empty")
         time.sleep(1)
     with open('coins.txt', 'r') as f:
          data = f.readlines()
