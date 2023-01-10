@@ -6,6 +6,7 @@ from datetime import datetime
 import decimal
 import time
 import os
+import platform
 import sys
 import csv
 import requests
@@ -118,13 +119,15 @@ def function_settings_busd():
     msg = 'Coinpair is nu: BUSD'
     function_sendmessage(msg)
 
-
 def function_count():
     symbol_list = function_symbol()
     for i in range(len(symbol_list)):
         if symbol_list[i] == 'reset':
             time.sleep(10)
-            os.execv(sys.executable, ['python'] + sys.argv)     # restarts application
+            if platform.system() == "Windows":
+                os.execv(sys.executable, ['python'] + sys.argv)     # restarts application
+            else:
+                os.system('sudo reboot')
         symbol = symbol_list[i]
         starttime = '1 day ago UTC'  # to start for 1 day ago
         interval_num = lines_set[1]
@@ -270,45 +273,40 @@ def function_count():
 def function_symbol():
     now_datetime = datetime.now()
     date_time = now_datetime.strftime("%d/%m/%Y, %H:%M:%S")
-    with open('coins_btc.txt', 'r') as f:
-        data = f.readlines()
     timer = time.time() + 60 * 60
+    with open('coins.txt', 'r') as f:
+        data = f.readlines()
     if not data:
-        with open('coins_btc.txt', 'w') as f:
-            f.write(f"{time.time()}\n{date_time}\n")
-        time.sleep(3)
-    with open('coins_btc.txt', 'r') as f:
+        with open('coins.txt', 'w') as f:
+            f.write(f"{time.time()}\n{date_time}\nempty")
+        time.sleep(1)
+    with open('coins.txt', 'r') as f:
          data = f.readlines()
-    if (decimal.Decimal(data[0]) < time.time()):
-        with open('coins_btc.txt', 'w') as f:
-            f.write(f"{timer}\n{date_time}\n")
-        with open('coins_busd.txt', 'w') as f:
+    if (decimal.Decimal(data[0]) < time.time()) or data[2] == "empty":
+        with open('coins.txt', 'w') as f:
             f.write(f"{timer}\n{date_time}\n")
         get_all = trader.client.get_ticker()
+        list_symbols_btc = []
+        list_symbols_busd = []
         for i in get_all:
             if decimal.Decimal(i['quoteVolume']) > 100 and i['symbol'][-3:] == 'BTC':
-                with open('coins_btc.txt', 'a') as f:
-                    f.write(f"{i['symbol']},")
+                list_symbols_btc.append(i['symbol'])
             if decimal.Decimal(i['quoteVolume']) > 5000000 and i['symbol'][-4:] == 'BUSD':
-                with open('coins_busd.txt', 'a') as f:
-                    f.write(f"{i['symbol']},")
-        with open('coins_btc.txt', 'a') as f:
-            f.write("reset")
-        with open('coins_busd.txt', 'a') as f:
-            f.write("reset")
-        print('refreshed symbols')
+                list_symbols_busd.append(i['symbol'])
+        list_symbols_btc.append("reset")
+        list_symbols_busd.append("reset")
+        with open('coins.txt', 'a') as f:
+            f.write(f"{','.join(list_symbols_btc)}\n{','.join(list_symbols_busd)}")
     with open('settings.txt', 'r') as file:
         data = file.readlines()
     if data[3].strip() == "busd":
-        with open('coins_busd.txt', 'r') as f:
-            data = f.readlines()
-        symbol_list = data[2].split(',')
-    with open('settings.txt', 'r') as file:
-        data = file.readlines()
+        with open('coins.txt', 'r') as f:
+            coins = f.readlines()
+        symbol_list = coins[3].split(',')
     if data[3].strip() == "btc":
-        with open('coins_btc.txt', 'r') as f:
-            data = f.readlines()
-        symbol_list = data[2].split(',')
+        with open('coins.txt', 'r') as f:
+            coins = f.readlines()
+        symbol_list = coins[2].split(',')
     return symbol_list
 
 
@@ -444,17 +442,24 @@ def function_sell(symbol, sell_calcprice, orderid):
     with open('trades.csv', 'a', encoding='UTF8', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(write_dict.values())
-    while True:
-        get_order_status = trader.client.get_order(symbol=symbol, orderId=orderid)
-        order_status = get_order_status['status']
-        if order_status == "NEW":
-            time.sleep(15)
-        else:
-            break
+    function_checkorder()
     msg = f'{symbol} has been sold.'
     function_sendmessage(msg)
     function_sendfile()
     os.execv(sys.executable, ['python'] + sys.argv)
+
+
+def function_checkorder():
+    data = pd.read_csv("trades.csv")
+    last_orderid = data.iloc[-1].OrderID
+    last_symbol = data.iloc[-1].Symbol
+    while True:
+        get_order_status = trader.client.get_order(symbol=last_symbol, orderId=last_orderid)
+        order_status = get_order_status['status']
+        if order_status == "NEW":
+            time.sleep(15)
+        else:
+            return
 
 
 def function_checkbtc():
