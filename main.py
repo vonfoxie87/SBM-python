@@ -122,12 +122,10 @@ def function_settings_busd():
 def function_count():
     symbol_list = function_symbol()
     for i in range(len(symbol_list)):
+        list_globaltime = [time.gmtime()[4]]
         if symbol_list[i] == 'reset':
             time.sleep(10)
-            if platform.system() == "Windows":
-                os.execv(sys.executable, ['python'] + sys.argv)     # restarts application
-            else:
-                os.system('sudo reboot')
+            os.execv(sys.executable, ['python'] + sys.argv)     # restarts application
         symbol = symbol_list[i]
         starttime = '1 day ago UTC'  # to start for 1 day ago
         interval_num = lines_set[1]
@@ -170,45 +168,29 @@ def function_count():
 
         # candle gesloten onder de lower bb?
         if decimal.Decimal(close_array[-1]) < decimal.Decimal(lower_bb):
-            msg = f'🟢🔸🔸🔸🔸🔸 {symbol}: 1. Close is correct'
             write_dict['Close'] = "%.8f" % decimal.Decimal(close_array[-1])
-            print(msg)
         else:
-            msg = f'🔸🔸🔸🔸🔸🔸 {symbol}: 1. Close is fout'
-            # print(msg)
             continue
 
         # Stoch check
         if (slowk[-1] < 20 or
             slowk[-2] < 20):
-            msg = f'🟢🟢🔸🔸🔸🔸 {symbol}: 2. Stoch is correct'
             write_dict['Stoch'] = "%.8f" % decimal.Decimal(slowk[-1])
-            print(msg)
         else:
-            msg = f'🟢🔴🔴🔴🔴🔴 {symbol}: 2. Stoch is fout'
-            print(msg)
             continue
 
         # BB check
         calc_percentage = ((decimal.Decimal(upper_bb) - decimal.Decimal(lower_bb)) / ((decimal.Decimal(upper_bb) + decimal.Decimal(lower_bb)) /2) * 100)
         if calc_percentage > 1 and calc_percentage < 5:
             calc_percentage = "%.2f" % decimal.Decimal(calc_percentage)
-            msg = f"🟢🟢🟢🔸🔸🔸 {symbol}: 3. BB is correct: {calc_percentage}%"
             write_dict['BBpercentages'] = calc_percentage
-            print(msg)
         else:
-            msg = f'🟢🟢🔴🔴🔴🔴 {symbol}: 3. BB is fout'
-            print(msg)
             continue
 
         # PSAR check
         if (decimal.Decimal(psar[-1]) < decimal.Decimal(ma20[-1])):
-            msg = f'🟢🟢🟢🟢🔸🔸 {symbol}: 4. PSAR is correct'
             write_dict['PSAR'] = "%.8f" % decimal.Decimal(psar[-1])
-            print(msg)
         else:
-            msg = f'🟢🟢🟢🔴🔴🔴 {symbol}: 4. PSAR is fout'
-            print(msg)
             continue
 
         # MA's check
@@ -217,40 +199,33 @@ def function_count():
             if ma200_ma50_calc > 0.3:  # 1
                 ma50_ma20_calc = abs((ma50[-1] - ma20[-1]) / ((ma50[-1] + ma20[-1]) / 2) * 100)
                 if ma50_ma20_calc > 0.3:  # 0.7
-                    msg = f"🟢🟢🟢🟢🟢🔸 {symbol}: 5. MA'S zijn correct"
                     write_dict['MA200'] = "%.8f" % decimal.Decimal(ma200[-1])
                     write_dict['MA50'] = "%.8f" % decimal.Decimal(ma50[-1])
                     write_dict['MA20'] = "%.8f" % decimal.Decimal(ma20[-1])
-                    print(msg)
                 else:
-                    msg = f'🟢🟢🟢🟢🔴🔴 {symbol}: 5. MA is fout'
-                    print(msg)
                     continue
             else:
-                msg = f'🟢🟢🟢🟢🔴🔴 {symbol}: 5. MA is fout'
-                print(msg)
                 continue
         else:
-            msg = f'🟢🟢🟢🟢🔴🔴 {symbol}: 5. MA is fout'
-            print(msg)
             continue
 
         # MACD check
         # loop functie, 60 seconden x 3 candles x interval
         end_macd_loop = (60 * float(interval_num) * 3)
-        macd_hist_list = []
-        macd_hist_list.append(decimal.Decimal(macdhist[-1]))
-        print(f'{macd_hist_list[0]} - Old one')
+        macd_hist_list = [decimal.Decimal(macdhist[-1])]
         t1 = datetime.now()
+        while (time.gmtime()[4] <= decimal.Decimal(list_globaltime[0])):
+            print('sleep')
+            time.sleep(5)
         while (datetime.now()-t1).seconds <= end_macd_loop:
-            klines = trader.client.get_historical_klines(symbol, interval, starttime)
-            close = [float(entry[4]) for entry in klines]
-            close_array = np.asarray(close)
-            macd, macdsignal, macdhist = ta.MACD(close_array, fastperiod=12, slowperiod=26, signalperiod=9)
-            macdhist_new = (macd[-1] - macdsignal[-1])
+            klines_macd = trader.client.get_historical_klines(symbol, interval, starttime)
+            close_macd = [float(entry[4]) for entry in klines_macd]
+            close_array_macd = np.asarray(close_macd)
+            macd, macdsignal, macdhist_macd = ta.MACD(close_array_macd, fastperiod=12, slowperiod=26, signalperiod=9)
+            macdhist_new = macdhist_macd[-2]
             print(macdhist_new)
             time.sleep(10)
-            if decimal.Decimal(macdhist_new) > macd_hist_list[0]:
+            if decimal.Decimal(macdhist_new) > decimal.Decimal(macd_hist_list[0]):
                 if decimal.Decimal(macdhist_new) < 0:
                     now_datetime = datetime.now()
                     date_time = now_datetime.strftime("%d/%m/%Y, %H:%M:%S")
@@ -258,15 +233,10 @@ def function_count():
                     ask_price = trader.client.get_orderbook_ticker(symbol=symbol)
                     askprice = ask_price['askPrice']
                     print(askprice)
-                    msg = f"🟢🟢🟢🟢🟢🟢 {symbol}: Alle voorwaarden behaald!\nAsk price: {askprice}"
-                    print(msg)
                     write_dict['Datetime'] = date_time
                     write_dict['macdhist'] = "%.8f" % decimal.Decimal(macdhist_new)
                     write_dict['AskPrice'] = "%.8f" % decimal.Decimal(askprice)
-                    # function_sendmessage(msg)
                     function_buy(symbol, write_dict)
-        msg = f'🟢🟢🟢🟢🟢🔴 {symbol}: 6. MACD is fout'
-        print(msg)
         os.execv(sys.executable, ['python'] + sys.argv)
 
 
@@ -372,16 +342,12 @@ def function_buy(symbol, write_dict):
         writer.writerow(write_dict.values())
     function_sendmessage(msg)
     function_sendchart()
-    # function_sendfile()
     time.sleep(10)
     function_sell(symbol=symbol, sell_calcprice=sell_calcprice, orderid=orderid)
 
 
 def function_sell(symbol, sell_calcprice, orderid):
-    get_order_status = trader.client.get_order(symbol=symbol, orderId=orderid)
-    order_status = get_order_status['status']
-    while order_status == "NEW":
-        time.sleep(10)
+    function_checkorder()
 
     ticksize_client = trader.client.get_symbol_info(symbol)
     ticksize = float(ticksize_client['filters'][0]['tickSize'])
@@ -457,7 +423,8 @@ def function_checkorder():
         get_order_status = trader.client.get_order(symbol=last_symbol, orderId=last_orderid)
         order_status = get_order_status['status']
         if order_status == "NEW":
-            time.sleep(15)
+            print('still an open order, wait...')
+            time.sleep(20)
         else:
             return
 
@@ -503,4 +470,7 @@ class Trader:
 
 trader = Trader(filename)
 
+function_checkorder()
 function_checkbtc()
+
+
